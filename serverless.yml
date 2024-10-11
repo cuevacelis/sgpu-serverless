@@ -9,6 +9,12 @@ provider:
   name: aws
   runtime: nodejs20.x
   region: us-east-1
+  logs:
+    lambda:
+    logFormat: JSON
+    applicationLogLevel: ERROR
+    systemLogLevel: INFO
+    logGroup: /aws/lambda/global-log-group
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -29,31 +35,44 @@ provider:
       Action:
         - ses:SendEmail
         - ses:SendRawEmail
+        - lambda:InvokeFunction
       Resource: "*"
 
 package:
   individually: true
+  excludeDevDependencies: true
 
 plugins:
+  - serverless-plugin-typescript
   - serverless-dotenv-plugin
-  # - serverless-plugin-common-excludes # this should go before
+  - serverless-plugin-common-excludes # this should go before
   - serverless-plugin-include-dependencies
 
+build:
+  esbuild: false
+
 functions:
-  generateExcel:
-    handler: functions/generateExcel/handler.handler
+  getProyectosExport:
+    handler: functions/getProyectosExport/handler.handler
+    events:
+      - http:
+          path: getProyectosExport
+          method: get
+          cors: true
+  generateExcelQueue:
+    handler: functions/generateExcelQueue/handler.handler
     events:
       - sqs:
           arn: arn:aws:sqs:us-east-1:013271978441:excel-export-queue
           batchSize: 1
-  ablyNotification:
-    handler: functions/ablyNotification/handler.handler
+  ablyNotificationQueue:
+    handler: functions/ablyNotificationQueue/handler.handler
     events:
       - sqs:
           arn: arn:aws:sqs:us-east-1:013271978441:ably-notifications
           batchSize: 10
-  sendEmail:
-    handler: functions/sendEmail/handler.handler
+  sendEmailQueue:
+    handler: functions/sendEmailQueue/handler.handler
     events:
       - sqs:
           arn: arn:aws:sqs:us-east-1:013271978441:email-queue

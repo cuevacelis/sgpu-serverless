@@ -1,7 +1,8 @@
 import Ably from "ably";
+import { SQSEvent } from "aws-lambda";
 
 // Lambda genérico que maneja diferentes tipos de notificaciones
-export const handler = async (event) => {
+export const handler = async (event: SQSEvent) => {
   const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
 
   try {

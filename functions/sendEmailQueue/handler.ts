@@ -1,8 +1,13 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import {
+  SESClient,
+  SendEmailCommand,
+  SendEmailCommandInput,
+} from "@aws-sdk/client-ses";
+import { SQSEvent } from "aws-lambda";
 
 const sesClient = new SESClient({ region: "us-east-1" });
 
-export const handler = async (event) => {
+export const handler = async (event: SQSEvent) => {
   for (const record of event.Records) {
     console.log("Message received:", record.body);
     const messageBody = JSON.parse(record.body);
@@ -20,35 +25,43 @@ export const handler = async (event) => {
       continue;
     }
 
-    const params = {
+    // Construir el cuerpo del mensaje
+    const body: NonNullable<SendEmailCommandInput["Message"]>["Body"] = {};
+
+    if (html) {
+      body.Html = { Data: html };
+    }
+    if (text) {
+      body.Text = { Data: text };
+    }
+
+    // Asegurarse de que al menos una de las opciones está presente
+    if (!body.Html && !body.Text) {
+      console.error("No content for email body");
+      continue;
+    }
+
+    // Definir los parámetros con el tipo SendEmailCommandInput
+    const params: SendEmailCommandInput = {
+      Source: '"SGPU" <no-reply@mail.calculopreciosunitarios.com>',
       Destination: {
         ToAddresses: [to],
       },
       Message: {
-        Body: {},
         Subject: { Data: subject },
+        Body: body,
       },
-      Source: '"SGPU" <no-reply@mail.calculopreciosunitarios.com>',
     };
 
-    if (html) {
-      params.Message.Body.Html = { Data: html };
-    }
-    if (text) {
-      params.Message.Body.Text = { Data: text };
-    }
-
-    // Using try-catch for the email sending logic only
+    // Enviar el correo electrónico
     try {
       const command = new SendEmailCommand(params);
       const result = await sesClient.send(command);
       console.log(
         `Email sent successfully to ${to}. MessageId: ${result.MessageId}`
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error sending email to ${to}: ${error.message}`, error);
     }
   }
-
-  //   return { statusCode: 200, body: "Emails processed" };
 };

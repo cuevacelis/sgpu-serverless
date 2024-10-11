@@ -5,12 +5,13 @@ import {
 } from "@aws-sdk/client-s3";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { generateExcel } from "./generateExcel.js";
+import { generateExcel } from "./generateExcel";
+import { SQSEvent } from "aws-lambda";
 
 const s3Client = new S3Client({ region: "us-east-1" });
 const sqsClient = new SQSClient({ region: "us-east-1" });
 
-export const handler = async (event) => {
+export const handler = async (event: SQSEvent) => {
   try {
     for (const record of event.Records) {
       console.log("Processing record:", record.body);
