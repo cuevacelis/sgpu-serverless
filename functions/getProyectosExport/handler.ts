@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { sql } from "kysely";
 import getDbPostgres from "../../db/db-postgres";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import { ISpPresupuestoObtenPaginado } from "../../lib/types/types";
 
 const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
@@ -23,7 +24,7 @@ export const handler = async (
 
     const resultSQL = await getDbPostgres()
       .selectFrom(
-        sql`sp_presupuesto_obten_paginadov3_vusuario(
+        sql<ISpPresupuestoObtenPaginado>`sp_presupuesto_obten_paginadov3_vusuario(
           ${Number(userId)},
           ${100},
           ${1},
@@ -50,7 +51,7 @@ export const handler = async (
             body: JSON.stringify({
               type: "excel-export",
               dataSend: {
-                data: resultSQL.map((object: any) => ({
+                data: resultSQL[0]?.result?.data.map((object) => ({
                   Código: object.pre_codigo || "",
                   Usuario: object.usu_nomapellidos,
                   Nombre: object.pre_nombre,

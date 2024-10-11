@@ -15,6 +15,7 @@ export const handler = async (event: SQSEvent) => {
   try {
     for (const record of event.Records) {
       // Parse the message body
+      console.log("record.body:", record.body);
       const messageBody = JSON.parse(record.body);
       const { type, dataSend } = messageBody;
       const { data, userId, prefixNameFile, email } = dataSend;
