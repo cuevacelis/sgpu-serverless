@@ -1,7 +1,7 @@
 {
   "name": "sgpu-serverless",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "generate": "kysely-codegen --url='env(POSTGRES_URL)' --out-file './lib/types/typesDB.ts'"
   },
