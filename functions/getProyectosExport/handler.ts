@@ -64,7 +64,6 @@ export const handler = async (event: APIGatewayProxyEvent) => {
         ),
       });
       const response = await lambdaClient.send(command);
-      console.log("queueS3 Lambda invocada exitosamente:", response);
     } catch (error) {
       console.error("Error al invocar la Lambda queueS3:", error);
       throw error;

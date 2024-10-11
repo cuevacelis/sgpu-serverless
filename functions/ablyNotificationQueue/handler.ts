@@ -8,7 +8,6 @@ export const handler = async (event: SQSEvent) => {
   try {
     // Iterar sobre cada mensaje recibido en el evento
     for (const record of event.Records) {
-      console.log(`Mensaje recibido: ${record.body}`);
       const messageBody = JSON.parse(record.body);
       const { type, data = {}, extras = {} } = messageBody;
 
@@ -39,14 +38,11 @@ export const handler = async (event: SQSEvent) => {
           headers: { isRead, userId, globalChannel },
         },
       });
-
-      console.log(`Notificación enviada a Ably para el usuario: ${userId}`);
     }
   } catch (error) {
     console.error("Error enviando notificación a Ably:", error);
   } finally {
     // Cerrar la conexión de Ably al final
     await ably.connection.close();
-    console.log("Conexión de Ably cerrada.");
   }
 };

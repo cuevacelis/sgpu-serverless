@@ -14,8 +14,6 @@ const sqsClient = new SQSClient({ region: "us-east-1" });
 export const handler = async (event: SQSEvent) => {
   try {
     for (const record of event.Records) {
-      console.log("Processing record:", record.body);
-
       // Parse the message body
       const messageBody = JSON.parse(record.body);
       const { type, dataSend } = messageBody;
@@ -28,7 +26,6 @@ export const handler = async (event: SQSEvent) => {
 
       // Generate the Excel file
       const excelData = await generateExcel(data);
-      console.log("Excel data generated");
 
       // Upload the file to S3
       const bucketName = process.env.S3_BUCKET_NAME;
@@ -43,7 +40,6 @@ export const handler = async (event: SQSEvent) => {
       });
 
       await s3Client.send(putCommand);
-      console.log("File uploaded to S3 successfully");
 
       // Generate the signed URL for downloading
       const signedUrl = await getSignedUrl(
@@ -54,8 +50,6 @@ export const handler = async (event: SQSEvent) => {
         }),
         { expiresIn: 604800 } // 7 days in seconds
       );
-
-      console.log("Signed URL generated:", signedUrl);
 
       // Send a message to the SQS queue for Ably notifications
       const sqsAblyParams = {
@@ -77,7 +71,6 @@ export const handler = async (event: SQSEvent) => {
       };
 
       await sqsClient.send(new SendMessageCommand(sqsAblyParams));
-      console.log("Message sent to SQS (Ably) successfully");
 
       // Send a message to the SQS queue for email notifications
       if (email) {
@@ -95,7 +88,6 @@ export const handler = async (event: SQSEvent) => {
         };
 
         await sqsClient.send(new SendMessageCommand(sqsEmailParams));
-        console.log("Message sent to SQS (Email) successfully");
       }
     }
   } catch (error) {

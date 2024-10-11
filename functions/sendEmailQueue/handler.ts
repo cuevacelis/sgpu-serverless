@@ -9,7 +9,6 @@ const sesClient = new SESClient({ region: "us-east-1" });
 
 export const handler = async (event: SQSEvent) => {
   for (const record of event.Records) {
-    console.log("Message received:", record.body);
     const messageBody = JSON.parse(record.body);
     const { type, data } = messageBody;
 
@@ -57,9 +56,6 @@ export const handler = async (event: SQSEvent) => {
     try {
       const command = new SendEmailCommand(params);
       const result = await sesClient.send(command);
-      console.log(
-        `Email sent successfully to ${to}. MessageId: ${result.MessageId}`
-      );
     } catch (error: any) {
       console.error(`Error sending email to ${to}: ${error.message}`, error);
     }

@@ -14,7 +14,7 @@ provider:
     logFormat: JSON
     applicationLogLevel: ERROR
     systemLogLevel: INFO
-    logGroup: /aws/lambda/global-log-group
+    # logGroup: /aws/lambda/global-log-group
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -57,7 +57,7 @@ functions:
     events:
       - http:
           path: getProyectosExport
-          method: get
+          method: post
           cors: true
   generateExcelQueue:
     handler: functions/generateExcelQueue/handler.handler
