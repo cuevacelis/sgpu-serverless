@@ -23,9 +23,9 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const resultSQL = await getDbPostgres()
       .selectFrom(
         sql`sp_presupuesto_obten_paginadov3_vusuario(
-          ${userId},
+          ${Number(userId)},
           ${100},
-          ${0},
+          ${1},
           ${""}
         )
       `.as("result")
