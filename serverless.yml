@@ -1,0 +1,60 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: sgpuserverless
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: sgpu
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: sgpu-serverless
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource: arn:aws:s3:::export-excel-sgpu/*
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - arn:aws:sqs:us-east-1:013271978441:ably-notifications
+        - arn:aws:sqs:us-east-1:013271978441:email-queue
+        - arn:aws:sqs:us-east-1:013271978441:excel-export-queue
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+        - ses:SendRawEmail
+      Resource: "*"
+
+package:
+  individually: true
+
+plugins:
+  - serverless-dotenv-plugin
+  # - serverless-plugin-common-excludes # this should go before
+  - serverless-plugin-include-dependencies
+
+functions:
+  generateExcel:
+    handler: functions/generateExcel/handler.handler
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:013271978441:excel-export-queue
+          batchSize: 1
+  ablyNotification:
+    handler: functions/ablyNotification/handler.handler
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:013271978441:ably-notifications
+          batchSize: 10
+  sendEmail:
+    handler: functions/sendEmail/handler.handler
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:013271978441:email-queue
+          batchSize: 10
