@@ -42,7 +42,7 @@ export const handler = async (event: SQSEvent) => {
 
     // Definir los parámetros con el tipo SendEmailCommandInput
     const params: SendEmailCommandInput = {
-      Source: '"CALPU" <no-reply@mail.calculopreciosunitarios.com>',
+      Source: '"CALCPU" <no-reply@mail.calculopreciosunitarios.com>',
       Destination: {
         ToAddresses: [to],
       },
