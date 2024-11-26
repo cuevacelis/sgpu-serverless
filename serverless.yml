@@ -44,6 +44,8 @@ provider:
 package:
   individually: true
   excludeDevDependencies: true
+  include:
+    - fonts/**
 
 plugins:
   - serverless-plugin-typescript
