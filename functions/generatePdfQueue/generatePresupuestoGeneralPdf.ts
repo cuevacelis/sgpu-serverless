@@ -20,10 +20,8 @@ export const generatePresupuestoGeneralPdf = async (data: any) => {
   if (!data) {
     throw new Error("Datos inválidos para generar el PDF.");
   }
-  console.log("Data generatePresupuestoGeneralPdf");
-  console.log(data);
 
-  const gruposPartida = data.grupos_partida || []; // Asegúrate de que siempre sea un array
+  const gruposPartida = data.grupos_partida || []; // Asegurar que siempre sea un array
 
   let tableBody: any[] = [];
   let subtotal = 0;
@@ -36,35 +34,73 @@ export const generatePresupuestoGeneralPdf = async (data: any) => {
     { text: "Precio", bold: true },
   ]);
 
-  // Generar filas de la tabla
-  gruposPartida.forEach((grupo: any, index: number) => {
-    // Validar que hijos_g1 exista y sea un array
-    if (Array.isArray(grupo.hijos_g1)) {
-      grupo.hijos_g1.forEach((hijo: any, hijoIndex: number) => {
-        // Validar que partidas exista y sea un array
-        if (Array.isArray(hijo.partidas)) {
-          hijo.partidas.forEach((partida: any, partidaIndex: number) => {
-            const item = `${index + 1}.${hijoIndex + 1}.${partidaIndex + 1}`;
-            tableBody.push([
-              { text: item, fontSize: 8 },
-              { text: partida.par_nombre, fontSize: 8 },
-              { text: partida.unimed_nombre || "-", fontSize: 8 },
-              {
-                text: partida.par_preunitario
-                  ? partida.par_preunitario.toFixed(2)
-                  : "0.00",
-                fontSize: 8,
-              },
-            ]);
-            subtotal += partida.par_preunitario || 0;
-          });
-        }
+  // Función recursiva para generar las filas
+  const processGrupo = (
+    grupo: any,
+    parentItem: string = "",
+    level: number = 1
+  ) => {
+    const currentItem = parentItem
+      ? `${parentItem}.${String(level).padStart(2, "0")}`
+      : String(level).padStart(2, "0");
+
+    // Agregar el grupo al cuerpo de la tabla
+    tableBody.push([
+      { text: currentItem, fontSize: 8, bold: true },
+      { text: grupo.grupar_nombre, fontSize: 8, bold: true },
+      { text: "", fontSize: 8 },
+      { text: "", fontSize: 8 },
+    ]);
+
+    // Si el grupo tiene partidas, agrégalas
+    if (Array.isArray(grupo.partidas)) {
+      grupo.partidas.forEach((partida: any, index: number) => {
+        const partidaItem = `${currentItem}.${String(index + 1).padStart(
+          2,
+          "0"
+        )}`;
+        tableBody.push([
+          { text: partidaItem, fontSize: 8 },
+          { text: partida.par_nombre, fontSize: 8 },
+          { text: partida.unimed_nombre || "-", fontSize: 8 },
+          {
+            text: partida.par_preunitario
+              ? partida.par_preunitario.toFixed(2)
+              : "0.00",
+            fontSize: 8,
+          },
+        ]);
+        subtotal += partida.par_preunitario || 0;
       });
     }
-  });
 
-  console.log("Table body");
-  console.log(tableBody);
+    // Procesar los subgrupos (hijos)
+    if (Array.isArray(grupo.hijos_g1)) {
+      grupo.hijos_g1.forEach((hijo: any, index: number) =>
+        processGrupo(hijo, currentItem, index + 1)
+      );
+    }
+    if (Array.isArray(grupo.hijos_g2)) {
+      grupo.hijos_g2.forEach((hijo: any, index: number) =>
+        processGrupo(hijo, currentItem, index + 1)
+      );
+    }
+    if (Array.isArray(grupo.hijos_g3)) {
+      grupo.hijos_g3.forEach((hijo: any, index: number) =>
+        processGrupo(hijo, currentItem, index + 1)
+      );
+    }
+    if (Array.isArray(grupo.hijos_g4)) {
+      grupo.hijos_g4.forEach((hijo: any, index: number) =>
+        processGrupo(hijo, currentItem, index + 1)
+      );
+    }
+  };
+
+  // Procesar todos los grupos de partida
+  gruposPartida.forEach((grupo: any, index: number) =>
+    processGrupo(grupo, "", index + 1)
+  );
 
   // Calcular IGV y Total
   const igv = subtotal * 0.18;

@@ -47,10 +47,6 @@ export const handler = async (event: SQSEvent) => {
           continue;
       }
 
-      // Generar PDF
-      console.log("Generando PDF");
-      console.log(data);
-
       // Subir PDF a S3
       const bucketName = process.env.S3_BUCKET_NAME!;
       const fileName = `${prefixNameFile}-${Date.now()}.pdf`;
