@@ -2,7 +2,6 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { sql } from "kysely";
 import getDbPostgres from "../../db/db-postgres";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-// import { IDataDBObtenerGruposDePartidasId } from "../../lib/types/types";
 
 const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
@@ -10,51 +9,55 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const { pre_id } = JSON.parse(event.body || "{}");
+    const { pre_id, userId, email } = JSON.parse(event.body || "{}");
 
-    if (!pre_id) {
+    if (!pre_id || !userId) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "El parámetro 'pre_id' es obligatorio.",
+          error: "Los parámetros 'pre_id' y 'userId' son obligatorios.",
         }),
       };
     }
 
-    const gruposDePartida = await getDbPostgres()
+    // Obtener los grupos de partidas principales para el presupuesto
+    const grupos = await getDbPostgres()
       .selectFrom(
         sql<any>`sp_grupo_partida_obten_x_presupuesto(${pre_id})`.as("result")
       )
       .selectAll()
       .execute();
 
-    if (!gruposDePartida || gruposDePartida.length === 0) {
+    if (!grupos || grupos.length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({
-          error: "No se encontraron grupos de partida para el presupuesto.",
+          error: "No se encontraron grupos de partidas para el presupuesto.",
         }),
       };
     }
 
-    const invokePromises = gruposDePartida.map(async (grupo) => {
-      const payload = { grupar_id: grupo.grupar_id };
+    // Procesar cada grupo de partida
+    for (const grupo of grupos) {
+      const payload = {
+        grupar_id: grupo.grupar_id,
+        userId,
+        email,
+      };
 
       const command = new InvokeCommand({
         FunctionName: "sgpu-serverless-dev-getApuPorPartdiaExport",
-        InvocationType: "Event", // Asíncrono
+        InvocationType: "Event",
         Payload: Buffer.from(JSON.stringify(payload)),
       });
 
-      return lambdaClient.send(command);
-    });
-
-    await Promise.all(invokePromises);
+      await lambdaClient.send(command);
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: "Todos los PDFs de grupos de partida están en proceso.",
+        message: "Los procesos para generar los APUs están en ejecución.",
       }),
     };
   } catch (error) {

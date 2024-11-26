@@ -2,7 +2,6 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { sql } from "kysely";
 import getDbPostgres from "../../db/db-postgres";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-// import { ISpPresupuestoGeneral } from "../../lib/types/types";
 
 const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
@@ -10,25 +9,29 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const { pre_id } = JSON.parse(event.body || "{}");
+    const { pre_id, userId, prefixNameFile, email } = JSON.parse(
+      event.body || "{}"
+    );
 
-    if (!pre_id) {
+    if (!pre_id || !userId || !prefixNameFile) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "El parámetro 'pre_id' es obligatorio.",
+          error:
+            "Los parámetros 'pre_id', 'userId' y 'prefixNameFile' son obligatorios.",
         }),
       };
     }
 
-    const presupuestoGeneral = await getDbPostgres()
+    // Consulta a la función de PostgreSQL
+    const resultSQL = await getDbPostgres()
       .selectFrom(
-        sql<any>`sp_presupuesto_general_obten(${pre_id})`.as("result")
+        sql<any>`sp_presupuesto_obten_exportar(${pre_id})`.as("result")
       )
       .selectAll()
       .execute();
 
-    if (!presupuestoGeneral || presupuestoGeneral.length === 0) {
+    if (!resultSQL || resultSQL.length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({
@@ -37,20 +40,37 @@ export const handler = async (
       };
     }
 
+    // Obtener la data del resultado
+    const presupuestoData = resultSQL[0]?.result?.data;
+
+    // Validar que exista la data esperada
+    if (!presupuestoData || presupuestoData.length === 0) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({
+          error: "No se encontraron datos en el presupuesto exportado.",
+        }),
+      };
+    }
+
+    const presupuesto = presupuestoData[0]; // Primer presupuesto
     const payload = {
       Records: [
         {
           body: JSON.stringify({
-            type: "pdf-export",
+            type: "presupuesto-general",
             dataSend: {
-              data: presupuestoGeneral[0],
-              prefixNameFile: `PRESUPUESTO GENERAL ${presupuestoGeneral[0].pre_nombre}.pdf`,
+              data: presupuesto,
+              prefixNameFile: `PRESUPUESTO GENERAL ${prefixNameFile}`,
+              userId,
+              email,
             },
           }),
         },
       ],
     };
 
+    // Invocar a la función Lambda `generatePdfQueue`
     const command = new InvokeCommand({
       FunctionName: "sgpu-serverless-dev-generatePdfQueue",
       InvocationType: "Event",

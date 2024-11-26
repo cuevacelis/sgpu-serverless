@@ -15,28 +15,31 @@ provider:
     applicationLogLevel: ERROR
     systemLogLevel: INFO
     # logGroup: /aws/lambda/global-log-group
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:GetObject
-      Resource: arn:aws:s3:::export-excel-sgpu/*
-    - Effect: Allow
-      Action:
-        - sqs:SendMessage
-        - sqs:ReceiveMessage
-        - sqs:DeleteMessage
-        - sqs:GetQueueAttributes
-      Resource:
-        - arn:aws:sqs:us-east-1:013271978441:ably-notifications
-        - arn:aws:sqs:us-east-1:013271978441:email-queue
-        - arn:aws:sqs:us-east-1:013271978441:excel-export-queue
-    - Effect: Allow
-      Action:
-        - ses:SendEmail
-        - ses:SendRawEmail
-        - lambda:InvokeFunction
-      Resource: "*"
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+          Resource: "arn:aws:s3:::export-excel-sgpu/*"
+        - Effect: Allow
+          Action:
+            - "sqs:SendMessage"
+            - "sqs:ReceiveMessage"
+            - "sqs:DeleteMessage"
+            - "sqs:GetQueueAttributes"
+          Resource:
+            - "arn:aws:sqs:us-east-1:013271978441:ably-notifications"
+            - "arn:aws:sqs:us-east-1:013271978441:email-queue"
+            - "arn:aws:sqs:us-east-1:013271978441:excel-export-queue"
+            - "arn:aws:sqs:us-east-1:013271978441:pdf-export-queue"
+        - Effect: Allow
+          Action:
+            - "ses:SendEmail"
+            - "ses:SendRawEmail"
+            - "lambda:InvokeFunction"
+          Resource: "*"
 
 package:
   individually: true
@@ -66,7 +69,7 @@ functions:
     events:
       - sqs:
           arn: arn:aws:sqs:us-east-1:013271978441:excel-export-queue
-          batchSize: 1
+          batchSize: 10
   ablyNotificationQueue:
     handler: functions/ablyNotificationQueue/handler.handler
     events:
@@ -78,4 +81,34 @@ functions:
     events:
       - sqs:
           arn: arn:aws:sqs:us-east-1:013271978441:email-queue
+          batchSize: 10
+  getApuExport:
+    handler: functions/getApuExport/handler.handler
+    timeout: 900
+    events:
+      - http:
+          path: getApuExport
+          method: post
+          cors: true
+  getApuPorPartdiaExport:
+    handler: functions/getApuPorPartdiaExport/handler.handler
+    timeout: 900
+    events:
+      - http:
+          path: getApuPorPartdiaExport
+          method: post
+          cors: true
+  getPresupuestoGeneralExport:
+    handler: functions/getPresupuestoGeneralExport/handler.handler
+    timeout: 900
+    events:
+      - http:
+          path: getPresupuestoGeneralExport
+          method: post
+          cors: true
+  generatePdfQueue:
+    handler: functions/generatePdfQueue/handler.handler
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:013271978441:pdf-export-queue
           batchSize: 10

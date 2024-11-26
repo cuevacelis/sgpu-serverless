@@ -2,7 +2,6 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { sql } from "kysely";
 import getDbPostgres from "../../db/db-postgres";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-// import { IDataDBObtenerGruposDePartidasId } from "../../lib/types/types";
 
 const lambdaClient = new LambdaClient({ region: "us-east-1" });
 
@@ -10,49 +9,64 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const { grupar_id } = JSON.parse(event.body || "{}");
+    const { grupar_id, userId, email } = JSON.parse(event.body || "{}");
 
-    if (!grupar_id) {
+    if (!grupar_id || !userId) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "El parámetro 'grupar_id' es obligatorio.",
+          error: "Los parámetros 'grupar_id' y 'userId' son obligatorios.",
         }),
       };
     }
 
-    const grupoDePartida = await getDbPostgres()
+    // Obtener los datos del grupo de partida
+    const grupo = await getDbPostgres()
       .selectFrom(
-        sql<any>`sp_grupo_partida_obten_x_id(${grupar_id})`.as(
+        sql<any>`sp_grupo_partida_obten_x_presupuesto_x_grupo_partida_v4(${grupar_id})`.as(
           "result"
         )
       )
       .selectAll()
       .execute();
 
-    if (!grupoDePartida || grupoDePartida.length === 0) {
+    if (!grupo || grupo.length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({
-          error: "No se encontró información para el grupo de partida.",
+          error: "No se encontraron datos para el grupo de partida.",
         }),
       };
     }
+
+    // Obtener las partidas asociadas al grupo de partida
+    const partidas = await getDbPostgres()
+      .selectFrom(sql<any>`sp_partida_obten_x_grupo(${grupar_id})`.as("result"))
+      .selectAll()
+      .execute();
+
+    const data = {
+      grupo: grupo[0],
+      partidas,
+    };
 
     const payload = {
       Records: [
         {
           body: JSON.stringify({
-            type: "pdf-export",
+            type: "apu-por-partida",
             dataSend: {
-              data: grupoDePartida[0],
-              prefixNameFile: `${grupoDePartida[0].grupar_nombre}.pdf`,
+              data,
+              prefixNameFile: `${grupo[0].grupar_id} ${grupo[0].grupar_nombre}.pdf`,
+              userId,
+              email,
             },
           }),
         },
       ],
     };
 
+    // Invocar a la función Lambda `generatePdfQueue`
     const command = new InvokeCommand({
       FunctionName: "sgpu-serverless-dev-generatePdfQueue",
       InvocationType: "Event",
@@ -64,7 +78,7 @@ export const handler = async (
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `El PDF del grupo de partida ${grupoDePartida[0].grupar_nombre} está en proceso.`,
+        message: `El APU del grupo de partida está en proceso.`,
       }),
     };
   } catch (error) {
